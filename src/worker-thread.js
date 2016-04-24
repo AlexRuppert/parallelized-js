@@ -8,7 +8,7 @@ export class WorkerThread {
 
     this._worker.onmessage = (message) => {
       this._isRunning = false;
-      //this._finishCallback(this._id);
+      this._finishCallback(this._id);
       this._resolve(message.data);
     };
 
@@ -130,6 +130,41 @@ export class WorkerThread {
           serializedArgs,
         },
       });
+      self._resolve = resolve;
+    });
+  }
+
+  arrayInvoke(func, array, ...args) {
+    const self = this;
+    self._isRunning = true;
+    return new Promise((resolve) => {
+      const {
+        fn,
+        id,
+      } = WorkerThread.functionToString(func, true);
+
+      const serializedArgs = WorkerThread.flatSerializeArguments(args);
+      let bufferedArray;
+      if (ArrayBuffer.isView(array)) {
+        bufferedArray = array;
+      } else if (Array.isArray(array) &&
+        array.length > 0 && typeof array[
+          0] === 'number') {
+        bufferedArray = Float64Array.from(array);
+      } else {
+        throw new Error('Passed array is not an array of numbers!');
+      }
+      const message = {
+        type: 'arrayInvoke',
+        payload: {
+          fn,
+          id,
+          array: bufferedArray,
+          serializedArgs,
+        },
+      };
+
+      self._worker.postMessage(message, [message.payload.array.buffer]);
       self._resolve = resolve;
     });
   }

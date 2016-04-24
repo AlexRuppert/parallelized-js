@@ -62,7 +62,6 @@ export function workerFunction() {
         array, // eslint-disable-line
         serializedArgs, // eslint-disable-line
       } = payload;
-
       fn = self._helperFunctions.getFunction(fn, id);
       const deserializedArgs = self._helperFunctions.flatDeserializeArguments(
         serializedArgs);

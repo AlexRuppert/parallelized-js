@@ -48,10 +48,6 @@
 
 	var _workerManager = __webpack_require__(1);
 
-	var _workerScript = __webpack_require__(3);
-
-	var _workerThread = __webpack_require__(2);
-
 	function mul(a, b) {
 	  return a * b;
 	}
@@ -66,54 +62,20 @@
 	    console.log(result);
 	  });*/
 
-	var worker = new Worker(_workerThread.WorkerThread.functionToUrl(_workerScript.workerFunction));
-
-	worker.onmessage = function (message) {
-	  //console.log(message.data);
-	  console.log(Date.now() - start1);
-	  console.log(message.data);
-	};
-	var start1;
 	var testArray1 = [];
 	for (var i = 0; i < 1000000; i++) {
 	  testArray1.push(i);
 	}
-	//console.log(Int32Array.from(testArray1).buffer.byteLength);
-
-	function addAll(array) {
-	  for (var _i = 0; _i < array.length; _i++) {
-	    array[_i] += 5;
-	  }
-	  return array;
-	}
-	var message = {
-	  type: 'arrayInvoke',
-	  payload: {
-	    fn: _workerThread.WorkerThread.functionToString(addAll).fn,
-	    id: 0,
-	    array: Int32Array.from(testArray1),
-	    serializedArgs: []
-	  }
-	};
-	setTimeout(function () {
-	  start1 = Date.now();
-	  worker.postMessage(message, [message.payload.array.buffer]);
-	}, 500);
-	/*
-	const testArray1 = [];
-	for (let i = 0; i < 10000; i++) {
-	  testArray1.push(i);
-	}
-	let start = 0;
-	let end = 0;
-	const callbackFn = (val) => {
-	  let v = val;
-	  for (let k = 0; k < 10000; k++) {
+	var start = 0;
+	var end = 0;
+	var callbackFn = function callbackFn(val) {
+	  var v = val;
+	  for (var k = 0; k < 100; k++) {
 	    v += 1;
 	  }
-	  return val;
+	  return val * val;
 	};
-
+	testArray1 = Int32Array.from(testArray1);
 	start = Date.now();
 	testArray1.map(callbackFn);
 	end = Date.now();
@@ -122,11 +84,11 @@
 	console.log('---');
 	setTimeout(function () {
 	  start = Date.now();
-	  testArray1.parallelMap(callbackFn)
-	    .then((result) => {
-	      end = Date.now();
-	      console.log(end - start);
-	    });
+	  testArray1.parallelMap(callbackFn).then(function (result) {
+	    end = Date.now();
+	    console.log(end - start);
+	    console.log(result);
+	  });
 	}, 500);
 
 	/* workerManager.invoke(mul, 5, 7)
@@ -273,6 +235,22 @@
 	      });
 	    }
 	  }, {
+	    key: 'arrayInvoke',
+	    value: function arrayInvoke(func, array) {
+	      for (var _len2 = arguments.length, args = Array(_len2 > 2 ? _len2 - 2 : 0), _key2 = 2; _key2 < _len2; _key2++) {
+	        args[_key2 - 2] = arguments[_key2];
+	      }
+
+	      var self = this;
+	      return new Promise(function (resolve) {
+	        self.getNextFreeWorkerThread().then(function (workerThread) {
+	          workerThread.arrayInvoke.apply(workerThread, [func, array].concat(args)).then(function (result) {
+	            resolve(result);
+	          });
+	        });
+	      });
+	    }
+	  }, {
 	    key: 'parallelArray',
 	    get: function get() {
 	      return this._parallelArray;
@@ -317,7 +295,7 @@
 
 	    this._worker.onmessage = function (message) {
 	      _this._isRunning = false;
-	      //this._finishCallback(this._id);
+	      _this._finishCallback(_this._id);
 	      _this._resolve(message.data);
 	    };
 
@@ -381,6 +359,45 @@
 	            serializedArgs: serializedArgs
 	          }
 	        });
+	        self._resolve = resolve;
+	      });
+	    }
+	  }, {
+	    key: 'arrayInvoke',
+	    value: function arrayInvoke(func, array) {
+	      for (var _len2 = arguments.length, args = Array(_len2 > 2 ? _len2 - 2 : 0), _key2 = 2; _key2 < _len2; _key2++) {
+	        args[_key2 - 2] = arguments[_key2];
+	      }
+
+	      var self = this;
+	      self._isRunning = true;
+	      return new Promise(function (resolve) {
+	        var _WorkerThread$functio2 = WorkerThread.functionToString(func, true);
+
+	        var fn = _WorkerThread$functio2.fn;
+	        var id = _WorkerThread$functio2.id;
+
+
+	        var serializedArgs = WorkerThread.flatSerializeArguments(args);
+	        var bufferedArray = void 0;
+	        if (ArrayBuffer.isView(array)) {
+	          bufferedArray = array;
+	        } else if (Array.isArray(array) && array.length > 0 && typeof array[0] === 'number') {
+	          bufferedArray = Float64Array.from(array);
+	        } else {
+	          throw new Error('Passed array is not an array of numbers!');
+	        }
+	        var message = {
+	          type: 'arrayInvoke',
+	          payload: {
+	            fn: fn,
+	            id: id,
+	            array: bufferedArray,
+	            serializedArgs: serializedArgs
+	          }
+	        };
+
+	        self._worker.postMessage(message, [message.payload.array.buffer]);
 	        self._resolve = resolve;
 	      });
 	    }
@@ -540,7 +557,6 @@
 	      var // eslint-disable-line
 	      _serializedArgs = payload.serializedArgs;
 
-
 	      _fn = self._helperFunctions.getFunction(_fn, _id);
 	      var _deserializedArgs = self._helperFunctions.flatDeserializeArguments(_serializedArgs);
 
@@ -583,43 +599,43 @@
 	    if (extendArray) {
 	      (function () {
 	        var self = _this;
-
-	        Array.prototype.parallelIndexOf = function (searchElement) {
-	          var fromIndex = arguments.length <= 1 || arguments[1] === undefined ? // eslint-disable-line
-	          0 : arguments[1];
+	        /*eslint-disable */
+	        Int8Array.prototype.parallelIndexOf = Uint8Array.prototype.parallelIndexOf = Uint8ClampedArray.prototype.parallelIndexOf = Int16Array.prototype.parallelIndexOf = Uint16Array.prototype.parallelIndexOf = Int32Array.prototype.parallelIndexOf = Uint32Array.prototype.parallelIndexOf = Float32Array.prototype.parallelIndexOf = Float64Array.prototype.parallelIndexOf = Array.prototype.parallelIndexOf = function (searchElement) {
+	          var fromIndex = arguments.length <= 1 || arguments[1] === undefined ? 0 : arguments[1];
 
 	          return self.indexOf(this, searchElement, fromIndex);
 	        };
-	        Array.prototype.parallelEvery = function (callback) {
+	        Int8Array.prototype.parallelEvery = Uint8Array.prototype.parallelEvery = Uint8ClampedArray.prototype.parallelEvery = Int16Array.prototype.parallelEvery = Uint16Array.prototype.parallelEvery = Int32Array.prototype.parallelEvery = Uint32Array.prototype.parallelEvery = Float32Array.prototype.parallelEvery = Float64Array.prototype.parallelEvery = Array.prototype.parallelEvery = function (callback) {
 	          var thisArg = arguments.length <= 1 || arguments[1] === undefined ? null : arguments[1];
-	          // eslint-disable-line
+
 	          return self.every(this, callback, thisArg);
 	        };
-	        Array.prototype.parallelSome = function (callback) {
+	        Int8Array.prototype.parallelSome = Uint8Array.prototype.parallelSome = Uint8ClampedArray.prototype.parallelSome = Int16Array.prototype.parallelSome = Uint16Array.prototype.parallelSome = Int32Array.prototype.parallelSome = Uint32Array.prototype.parallelSome = Float32Array.prototype.parallelSome = Float64Array.prototype.parallelSome = Array.prototype.parallelSome = function (callback) {
 	          var thisArg = arguments.length <= 1 || arguments[1] === undefined ? null : arguments[1];
-	          // eslint-disable-line
+
 	          return self.some(this, callback, thisArg);
 	        };
-	        Array.prototype.parallelFilter = function (callback) {
+	        Int8Array.prototype.parallelFilter = Uint8Array.prototype.parallelFilter = Uint8ClampedArray.prototype.parallelFilter = Int16Array.prototype.parallelFilter = Uint16Array.prototype.parallelFilter = Int32Array.prototype.parallelFilter = Uint32Array.prototype.parallelFilter = Float32Array.prototype.parallelFilter = Float64Array.prototype.parallelFilter = Array.prototype.parallelFilter = function (callback) {
 	          var thisArg = arguments.length <= 1 || arguments[1] === undefined ? null : arguments[1];
-	          // eslint-disable-line
+
 	          return self.filter(this, callback, thisArg);
 	        };
-	        Array.prototype.parallelFind = function (callback) {
+	        Int8Array.prototype.parallelFind = Uint8Array.prototype.parallelFind = Uint8ClampedArray.prototype.parallelFind = Int16Array.prototype.parallelFind = Uint16Array.prototype.parallelFind = Int32Array.prototype.parallelFind = Uint32Array.prototype.parallelFind = Float32Array.prototype.parallelFind = Float64Array.prototype.parallelFind = Array.prototype.parallelFind = function (callback) {
 	          var thisArg = arguments.length <= 1 || arguments[1] === undefined ? null : arguments[1];
-	          // eslint-disable-line
+
 	          return self.find(this, callback, thisArg);
 	        };
-	        Array.prototype.parallelFindIndex = function (callback) {
+	        Int8Array.prototype.parallelFindIndex = Uint8Array.prototype.parallelFindIndex = Uint8ClampedArray.prototype.parallelFindIndex = Int16Array.prototype.parallelFindIndex = Uint16Array.prototype.parallelFindIndex = Int32Array.prototype.parallelFindIndex = Uint32Array.prototype.parallelFindIndex = Float32Array.prototype.parallelFindIndex = Float64Array.prototype.parallelFindIndex = Array.prototype.parallelFindIndex = function (callback) {
 	          var thisArg = arguments.length <= 1 || arguments[1] === undefined ? null : arguments[1];
-	          // eslint-disable-line
+
 	          return self.findIndex(this, callback, thisArg);
 	        };
-	        Array.prototype.parallelMap = function (callback) {
+	        Int8Array.prototype.parallelMap = Uint8Array.prototype.parallelMap = Uint8ClampedArray.prototype.parallelMap = Int16Array.prototype.parallelMap = Uint16Array.prototype.parallelMap = Int32Array.prototype.parallelMap = Uint32Array.prototype.parallelMap = Float32Array.prototype.parallelMap = Float64Array.prototype.parallelMap = Array.prototype.parallelMap = function (callback) {
 	          var thisArg = arguments.length <= 1 || arguments[1] === undefined ? null : arguments[1];
-	          // eslint-disable-line
+
 	          return self.map(this, callback, thisArg);
 	        };
+	        /*eslint-enable */
 	      })();
 	    }
 	  }
@@ -652,6 +668,10 @@
 	    key: '_createThread',
 	    value: function _createThread(args) {
 	      if (args !== null) {
+
+	        if (ArrayBuffer.isView(args[1])) {
+	          return this._workerManager.arrayInvoke.apply(this._workerManager, args);
+	        }
 	        return this._workerManager.invoke.apply(this._workerManager, args);
 	      }
 	      return null;
@@ -660,9 +680,61 @@
 	    key: 'flattenArray',
 	    value: function flattenArray(arrayOfArrays) {
 	      var result = [];
-	      for (var i = 0; i < arrayOfArrays.length; i++) {
-	        result = result.concat(arrayOfArrays[i]);
+
+	      if (arrayOfArrays.length === 0) {
+	        return [];
 	      }
+
+	      if (ArrayBuffer.isView(arrayOfArrays[0])) {
+	        var length = 0;
+	        for (var i = 0; i < arrayOfArrays.length; i++) {
+	          length += arrayOfArrays[i].length;
+	        }
+	        var typedArray = void 0;
+	        var arrayType = Object.prototype.toString.call(arrayOfArrays[0]);
+	        arrayType = arrayType.substring(8, arrayType.length - 1);
+	        /* beautify ignore:start */
+	        switch (arrayType) {
+	          case 'Int8Array':
+	            typedArray = new Int8Array(length);
+	            break;
+	          case 'Uint8Array':
+	            typedArray = new Uint8Array(length);
+	            break;
+	          case 'Uint8ClampedArray':
+	            typedArray = new Uint8ClampedArray(length);
+	            break;
+	          case 'Int16Array':
+	            typedArray = new Int16Array(length);
+	            break;
+	          case 'Uint16Array':
+	            typedArray = new Uint16Array(length);
+	            break;
+	          case 'Int32Array':
+	            typedArray = new Int32Array(length);
+	            break;
+	          case 'Uint32Array':
+	            typedArray = new Uint32Array(length);
+	            break;
+	          case 'Float32Array':
+	            typedArray = new Float32Array(length);
+	            break;
+	          default:
+	            typedArray = new Float64Array(length);
+	            break;
+	        }
+	        /* beautify ignore:end */
+	        typedArray.set(arrayOfArrays[0]);
+	        for (var _i2 = 1; _i2 < arrayOfArrays.length; _i2++) {
+	          typedArray.set(arrayOfArrays[_i2], arrayOfArrays[_i2 - 1].length);
+	        }
+	        return typedArray;
+	      }
+
+	      for (var _i3 = 0; _i3 < arrayOfArrays.length; _i3++) {
+	        result = result.concat(arrayOfArrays[_i3]);
+	      }
+
 	      return result;
 	    }
 	  }, {
@@ -689,11 +761,18 @@
 	      var _this2 = this;
 
 	      var self = this;
+	      var checkedArray = void 0;
+	      if (!ArrayBuffer.isView(array) && Array.isArray(array) && array.length > 0 && typeof array[0] === 'number') {
+	        checkedArray = Float64Array.from(array);
+	      } else {
+	        checkedArray = array;
+	      }
+
 	      return new Promise(function (resolve) {
-	        var partition = self._partitionArrayIndexes(array.length);
+	        var partition = self._partitionArrayIndexes(checkedArray.length);
 	        var threads = [];
 	        partition.forEach(function (part) {
-	          var subArray = array.slice(part[0], part[1] + 1);
+	          var subArray = checkedArray.slice(part[0], part[1] + 1);
 	          var thread = _this2._createThread(partitionFunction(subArray, part[0], part[1]));
 	          if (thread) {
 	            threads.push(thread);

@@ -97,4 +97,18 @@ export class WorkerManager {
         });
     });
   }
+
+  arrayInvoke(func, array, ...args) {    
+    const self = this;
+    return new Promise((resolve) => {
+      self.getNextFreeWorkerThread()
+        .then((workerThread) => {
+          workerThread.arrayInvoke.apply(workerThread, [func, array].concat(
+              args))
+            .then((result) => {
+              resolve(result);
+            });
+        });
+    });
+  }
 }
