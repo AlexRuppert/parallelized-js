@@ -1,7 +1,13 @@
 import {
-  workerFunction,
+  workerFunction
 } from './worker-script.js';
 
+/**
+ * (description)
+ * 
+ * @export
+ * @class WorkerThread
+ */
 export class WorkerThread {
   constructor(id = 0, finishCallback = () => {}) {
     this._worker = new Worker(WorkerThread.functionToUrl(workerFunction));

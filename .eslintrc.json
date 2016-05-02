@@ -5,6 +5,7 @@
     ],
     "rules":{
         "no-console":0,
-        "prefer-template": 0
+        "prefer-template": 0,
+        "comma-dangle": 0
     }
 }

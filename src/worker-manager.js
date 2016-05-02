@@ -1,9 +1,9 @@
 import {
-  WorkerThread,
+  WorkerThread
 } from './worker-thread.js';
 
 import {
-  ParallelizedArray,
+  ParallelizedArray
 } from './parallelized-array.js';
 
 export class WorkerManager {
@@ -98,7 +98,7 @@ export class WorkerManager {
     });
   }
 
-  arrayInvoke(func, array, ...args) {    
+  arrayInvoke(func, array, ...args) {
     const self = this;
     return new Promise((resolve) => {
       self.getNextFreeWorkerThread()
