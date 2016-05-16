@@ -1,4 +1,5 @@
 const path = require('path');
+const webpack = require('webpack');
 module.exports = {
   entry: './src/main.js',
   output: {
@@ -14,4 +15,14 @@ module.exports = {
       },
     }],
   },
+  plugins: [
+    /* new webpack.optimize.OccurrenceOrderPlugin(),
+    new webpack.optimize.UglifyJsPlugin({
+      minimize: true,
+      compress: {
+        warnings: false
+      }
+    }),
+    new webpack.optimize.DedupePlugin()*/
+  ]
 };

@@ -1,11 +1,17 @@
 {
-    "extends": "airbnb",
-    "plugins": [
-        "react"
-    ],
-    "rules":{
-        "no-console":0,
-        "prefer-template": 0,
-        "comma-dangle": 0
-    }
+  "extends": "airbnb",
+  "plugins": [
+    "react"
+  ],
+  "rules": {
+    "no-console": 0,
+    "prefer-template": 0,
+    "comma-dangle": 0,
+    "max-len": ["error", {
+      "code": 100,
+      "ignoreComments": true
+    }],
+    "func-names": 0,
+    "no-eval": 0
+  }
 }

@@ -1,5 +1,5 @@
 import {
-  WorkerManager,
+  WorkerManager
 } from './worker-manager.js';
 
 function mul(a, b) {
@@ -43,7 +43,7 @@ setTimeout(function () {
       end = Date.now();
       console.log(end - start);
       console.log(result);
-      
+
     });
 }, 500);
 

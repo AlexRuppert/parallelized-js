@@ -1,51 +1,78 @@
+/**
+ * Function that is used inside to Web Worker for coordination.
+ * It communicates via messages and supports these message types:
+ * - invoke: Invokes a function with given arguments
+ * - arrayInvoke: Invokes a function on a number array (TypedArray)
+ * - setFunctions: Sets functions to be used in the local context
+ * - importScripts: Imports external scripts over a URL
+ * @export
+ */
 export function workerFunction() {
-  self._toArray = function (arr) { // eslint-disable-line
+  // needed for Babel (ES6 conversion)
+  self._toArray = function (arr) {
     return Array.isArray(arr) ? arr : [].slice.call(arr);
   };
-  self._helperFunctions = {};
-  self._helperFunctions.functionCache = {};
 
-  self._helperFunctions.getFunction = function (func, id) { // eslint-disable-line
-    if (id === 0) {
-      return eval(func); // eslint-disable-line
+  // needed to avoid conflicts with later user defined functions
+  self._helperFunctions = {
+    functionCache: {}
+  };
+
+  // deserializes functions, uses cache if function with same id was already deserialized
+  self._helperFunctions.getFunction = function (func, id) {
+    if (id == 0) { // eslint-disable-line
+      return eval(func);
     }
 
     if (!self._helperFunctions.functionCache.hasOwnProperty(id)) {
-      self._helperFunctions.functionCache[id] = eval(func); // eslint-disable-line
+      self._helperFunctions.functionCache[id] = eval(func);
     }
     return self._helperFunctions.functionCache[id];
   };
 
-  self._helperFunctions.flatDeserializeArguments = function (args) { // eslint-disable-line
+  // deserializes function arguments. Detects serialized function strings with a prefix
+  self._helperFunctions.flatDeserializeArguments = function (args) {
     const result = [];
     for (let i = 0; i < args.length; i++) {
-      const argument = args[i];
-      if (typeof argument === 'string' && argument.indexOf('(function(){') ===
+      const arg = args[i];
+      if (typeof arg === 'string' && arg.indexOf('(function(){') ===
         0) {
-        result.push(self._helperFunctions.getFunction(argument, 0));
+        result.push(self._helperFunctions.getFunction(arg, 0));
       } else {
-        result.push(argument);
+        result.push(arg);
       }
     }
     return result;
   };
 
+  // ACTUAL WORK IS DONE HERE
   self.onmessage = (message) => {
     const {
       type,
       payload,
     } = message.data;
 
+    // check for message type
     if (type === 'invoke') {
-      let {
-        fn,
-        id, // eslint-disable-line
-        serializedArgs, // eslint-disable-line
-      } = payload;
-      fn = self._helperFunctions.getFunction(fn, id);
+      payload.fn = self._helperFunctions.getFunction(payload.fn, payload.id);
       const deserializedArgs = self._helperFunctions.flatDeserializeArguments(
-        serializedArgs);
-      const result = fn.apply(self, deserializedArgs);
+        payload.serializedArgs);
+      // invoke function and return value as a message
+      const result = payload.fn.apply(self, deserializedArgs);
+      self.postMessage(result);
+    } else if (type === 'arrayInvoke') {
+      payload.fn = self._helperFunctions.getFunction(payload.fn, payload.id);
+      const deserializedArgs = self._helperFunctions.flatDeserializeArguments(
+        payload.serializedArgs);
+      // invoke function and return value as a message
+      const result = payload.fn.apply(self, [payload.array].concat(
+        deserializedArgs));
+
+      // use specialized API call, if return value is a TypedArray
+      if (ArrayBuffer.isView(result)) {
+        self.postMessage(result, [result.buffer]);
+        return;
+      }
       self.postMessage(result);
     } else if (type === 'setFunctions') {
       for (const key in payload) {
@@ -55,28 +82,6 @@ export function workerFunction() {
       }
     } else if (type === 'importScripts') {
       self.importScripts.apply(self, payload);
-    } else if (type === 'arrayInvoke') {
-      let {
-        fn,
-        id, // eslint-disable-line
-        array, // eslint-disable-line
-        serializedArgs, // eslint-disable-line
-      } = payload;
-      fn = self._helperFunctions.getFunction(fn, id);
-      const deserializedArgs = self._helperFunctions.flatDeserializeArguments(
-        serializedArgs);
-
-      const result = fn.apply(self, [array].concat(deserializedArgs));
-      if (ArrayBuffer.isView(result)) {
-        self.postMessage(result, [result.buffer]);
-        return;
-      } else if (Array.isArray(result) && result.length > 0 && typeof result[
-          0] === 'number') {
-        const bufferedArray = Float64Array.from(result);
-        self.postMessage(bufferedArray, [bufferedArray.buffer]);
-        return;
-      }
-      self.postMessage(result);
     }
   };
 }
