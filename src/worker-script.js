@@ -9,6 +9,7 @@
  */
 export function workerFunction() {
   // needed for Babel (ES6 conversion)
+  self.window = self;
   self._toArray = function (arr) {
     return Array.isArray(arr) ? arr : [].slice.call(arr);
   };
@@ -51,7 +52,6 @@ export function workerFunction() {
       type,
       payload,
     } = message.data;
-
     // check for message type
     if (type === 'invoke') {
       payload.fn = self._helperFunctions.getFunction(payload.fn, payload.id);

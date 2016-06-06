@@ -1,6 +1,6 @@
 import {
-  WorkerThread
-} from './worker-thread.js';
+  WorkerFactory
+} from './worker-factory.js';
 
 import {
   ParallelizedArray
@@ -60,7 +60,7 @@ export class WorkerManager {
 
     // create {@link WorkerThread}s for the pool
     for (let i = 0; i < this._options.maxPoolCount; i++) {
-      this._pool.push(new WorkerThread(i, this._threadFinished.bind(this)));
+      this._pool.push(WorkerFactory.createWorker(i, this._threadFinished.bind(this)));
     }
 
     // one instance of ParallelizedArray for use

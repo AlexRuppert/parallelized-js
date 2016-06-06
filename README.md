@@ -28,7 +28,7 @@ Usage
 A full documentation of all classes and functions can be found [here](TODO).
 ####Simple example:
 ```javascript
-const workers = new WorkerManager({
+const workers = new ParallelizedJS.WorkerManager({
   extendArray: true,
 });
 
@@ -78,7 +78,7 @@ const array = Uint32Array(1000);
 for (let i = 0; i < 1000; i++) {
   array[i] = i;
 }
-const workers = new WorkerManager();
+const workers = new ParallelizedJS.WorkerManager();
 workers.parallelArray.filter(
   array,
   (element) => element % 2 == 0)
@@ -93,7 +93,7 @@ Custom functions can be invoked in a parallel thread with the `WorkerManager.inv
 function doSomething(a, b, c, d) {
   return a + b * c - d;
 }
-const workers = new WorkerManager();
+const workers = new ParallelizedJS.WorkerManager();
 
 workers.invoke(doSomething, 1, 2, 3, 4)
   .then((result) => {
@@ -118,7 +118,7 @@ function bar (a) {
 function doSomething(a, b) {
   return foo(a) - bar(b);
 }
-const workers = new WorkerManager();
+const workers = new ParallelizedJS.WorkerManager();
 
 workers.setNamedFunctions([foo, bar]);
 workers.invoke(doSomething, 50, 40)
@@ -133,7 +133,7 @@ You can also directly import whole (external) scripts via ```WorkerManager.impor
 
 You can create and manage individual `WorkerThread`s on your own in the same way, as you would with use the `WorkerManager`:
 ```javascript
-const worker = new WorkerThread();
+const worker = new ParallelizedJS.WorkerFactory.createWorker();
 worker.invoke(doSomething, 1, 2, 3, 4)
   .then((result) => {
     console.log(result);
@@ -168,7 +168,11 @@ npm install
 
 ####Build
 ```
-npm run devbuild
+npm run build
+```
+or with file watcher:
+```
+npm run buildwatch
 ```
 
 ####Linting
@@ -182,13 +186,13 @@ npm run doc
 ```
 
 ####Unit Tests
-```
-npm run test
-```
+Open `./test/testrunner.html` and `./test/testrunner_support.html` in your browser.
+The later one performs the tests without actual Workers,
+but with substitutions that make the library compatible with older browsers.
 
 ####Deploy Build
 ```
-npm run deploy
+npm run builddeploy
 ```
 
 

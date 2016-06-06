@@ -43,11 +43,16 @@ export class WorkerThread {
    *
    * @param {number} [id=0] The ID can be used to identify instences of WorkerThread.
    * @param {function(id: number, result: * )} [finishCallback] This function is invoked upon completing a task.
+   * @param {boolean} [createWorker = true] If a Worker should be created. Used by {@FakeWorkerThread} to suppress Worker creation.
    * It is internally used for {@link WorkerManager} to track completion,
    * but you can use it for own purposes.
    */
-  constructor(id = 0, finishCallback = () => {}) {
-    this._worker = new Worker(WorkerThread.functionToUrl(workerFunction));
+  constructor(id = 0, finishCallback = () => {}, createWorker = true) {
+    if (createWorker) {
+      this._worker = new Worker(WorkerThread.functionToUrl(workerFunction));
+    } else {
+      this._worker = {};
+    }
 
     this._worker.onmessage = (message) => { // handle Worker response HERE
       this._isRunning = false;
@@ -198,11 +203,15 @@ export class WorkerThread {
    * Loads scripts from the given URLs, which then can be used from within the Worker.
    *
    * @param {string[]} urls Array of script URLs to import.
+   * @returns {Promise<void>} A promise, when the scripts have been loaded.
    */
   importScripts(urls) {
     this._worker.postMessage({
       type: 'importScripts',
       payload: urls,
+    });
+    return new Promise((resolve) => {
+      resolve();
     });
   }
 

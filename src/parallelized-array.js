@@ -49,7 +49,7 @@ export class ParallelizedArray {
         'map'
       ]
 
-      //helpet function: each function gets the prefix 'parallel' before adding it to the prototype
+      // helper function: each function gets the prefix 'parallel' before adding it to the prototype
       function setFunction(proto, funcName) {
         proto['parallel' + funcName.charAt(0).toUpperCase() + funcName.slice(
           1)] = function (callback, thisArg) {
@@ -64,6 +64,7 @@ export class ParallelizedArray {
           setFunction(proto, funcs[j]);
         }
       }
+      
       /*eslint-enable */
     }
   }
@@ -128,7 +129,6 @@ export class ParallelizedArray {
    */
   _flattenArray(arrayOfArrays) {
     let result = [];
-
     if (arrayOfArrays.length === 0) {
       return [];
     }
@@ -178,8 +178,10 @@ export class ParallelizedArray {
 
       // copy values into new array
       typedArray.set(arrayOfArrays[0]);
+      let offset = 0;
       for (let i = 1; i < arrayOfArrays.length; i++) {
-        typedArray.set(arrayOfArrays[i], arrayOfArrays[i - 1].length);
+        offset += arrayOfArrays[i - 1].length;
+        typedArray.set(arrayOfArrays[i], offset);
       }
       return typedArray;
     }
@@ -188,7 +190,6 @@ export class ParallelizedArray {
     for (let i = 0; i < arrayOfArrays.length; i++) {
       result = result.concat(arrayOfArrays[i]);
     }
-
     return result;
   }
 
@@ -295,8 +296,8 @@ export class ParallelizedArray {
    */
   indexOf(array, searchElement, fromIndex = 0) {
     return this.fragmentOperation(array,
-      (subArray, firstIndex) => {
-        if (firstIndex < fromIndex) {
+      (subArray, firstIndex, lastIndex) => {
+        if (lastIndex < fromIndex) {
           return null;
         }
         const fromIndexAdjusted = Math.max(fromIndex - firstIndex, 0);
